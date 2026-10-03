@@ -1,0 +1,35 @@
+FROM busybox as extractor
+ARG OILS_VER=0.38.0
+RUN \
+   mkdir /pkg && \
+   wget -O- https://oils.pub/download/oils-for-unix-${OILS_VER}.tar.gz | tar -xvz -C /pkg --strip-components 1
+
+FROM scratch as srcpkg
+COPY --from=extractor /pkg /
+
+FROM chimeralinux/chimera as buildbase
+RUN \
+  apk update && \
+  apk add clang musl-devel-static libunwind-devel-static libcxx-devel-static libatomic-chimera-devel-static
+
+FROM buildbase as build
+ENV CC=clang CLFAGS="-static -flto" LDFLAGS="-static -flto"
+RUN \
+  --mount=type=bind,from=srcpkg,dst=/src,rw \
+  cd /src && \
+  /src/configure --prefix='' \
+    --without-readline \
+    --without-systemtap-sdt && \
+  /src/_build/oils.sh && \
+  mkdir /out && \
+  DESTDIR=/out /src/install 
+
+FROM scratch as oils
+COPY --from=build /out /
+ENV SHELL=/bin/osh
+ENTRYPOINT [ "/bin/osh" ]
+
+FROM scratch as minioils
+COPY --from=oils /bin/oils-for-unix /bin/ysh /bin/osh /bin
+ENV SHELL=/bin/osh
+ENTRYPOINT ["/bin/osh"]
