@@ -24,12 +24,20 @@ RUN \
   mkdir /out && \
   DESTDIR=/out /src/install 
 
+FROM chimeralinux/chimera as installer
+RUN \
+  --mount=type=bind,from=build,src=/out,dst=/pkg \
+  mkdir /out && \
+  install /pkg/bin/oils-for-unix /out && \
+  ln -sTf ./oils-for-unix /out/osh && \
+  ln -sTf ./oils-for-unix /out/ysh
+
 FROM scratch as oils
-COPY --from=build /out /
+LABEL \
+  org.opencontainers.image.title="Oils for Unix" \
+  org.opencontainers.image.description="A statically-linked copy of Oils for unix, not very useful on it's own" \
+  org.opencontainers.authors="Aaron B. Haun <aaron@haun.guru>"
+COPY --from=installer /out /bin
 ENV SHELL=/bin/osh
 ENTRYPOINT [ "/bin/osh" ]
 
-FROM scratch as minioils
-COPY --from=oils /bin/oils-for-unix /bin/ysh /bin/osh /bin
-ENV SHELL=/bin/osh
-ENTRYPOINT ["/bin/osh"]

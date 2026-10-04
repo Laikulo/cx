@@ -1,0 +1,5 @@
+FROM haun.haus/edc:latest
+ADD --chmod=755 https://repo.chimera-linux.org/apk/latest/apk-x86_64.static /bin
+RUN [ "/bin/ln", "-sTf", "apk-x86_64.static", "/bin/apk" ]
+RUN [ "/bin/apk", "add", "--initdb", "" ]
+ENTRYPOINT ["/bin/apk"]

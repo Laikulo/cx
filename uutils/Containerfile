@@ -1,0 +1,42 @@
+ARG UUTILS_VER=0.12.0
+
+FROM busybox as extractor
+RUN \
+  mkdir /pkg && \
+  wget -O- https://github.com/uutils/coreutils/archive/refs/tags/0.12.0.tar.gz | tar -xvz -C /pkg --strip-components 1 
+
+FROM scratch as srcpkg
+COPY --from=extractor /pkg /
+
+FROM chimeralinux/chimera as buildbase
+RUN \
+  apk update && \
+  apk add cargo gmake \
+    musl-devel-static libunwind-devel-static libatomic-chimera-devel-static
+
+FROM buildbase as builder
+ENV RUSTFLAGS="-C target-feature=+crt-static"
+RUN \
+  --mount=type=bind,from=srcpkg,dst=/src,rw \
+  mkdir /out && \
+  cd /src && \
+  cargo build --target-dir=/out --release --features feat_os_unix_musl --target x86_64-chimera-linux-musl
+
+FROM chimeralinux/chimera as installer
+RUN \
+  --mount=type=bind,from=builder,src=/out,dst=/build \
+  mkdir /out && \
+  install /build/x86_64-chimera-linux-musl/release/coreutils /out/coreutils && \
+  /out/coreutils --list | \
+  { \
+    while read cmdlet; do \
+      ln -sTf ./coreutils /out/"$cmdlet"; \
+    done \
+  }
+
+FROM scratch as coreutils
+LABEL \
+  org.opencontainers.image.title="uutils" \
+  org.opencontainers.image.description="A statically-linked copy of uutils" \
+  org.opencontainers.authors="Aaron B. Haun <aaron@haun.guru>"
+COPY --from=installer /out /bin

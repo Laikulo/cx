@@ -1,0 +1,10 @@
+FROM scratch
+LABEL \
+  org.opencontainers.image.title="EDC" \
+  org.opencontainers.image.description="A shell and coreutils, small enough to fit in your pocket" \
+  org.opencontainers.authors="Aaron B. Haun <aaron@haun.guru>"
+ARG CX_BASE=haun.haus OILS_TAG=latest UUTILS_TAG=latest
+COPY --from=${CX_BASE}/oils:${OILS_TAG} /bin /bin
+COPY --from=${CX_BASE}/uutils:${UUTILS_TAG} /bin /bin
+ENV SHELL=/bin/osh
+ENTRYPOINT [ "/bin/osh" ]
