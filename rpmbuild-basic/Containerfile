@@ -1,0 +1,7 @@
+FROM rockylinux:10-minimal
+RUN groupadd -g 1000 rocky && \
+    useradd -u 1000 -m -g rocky rocky 
+RUN microdnf install -y rpm-build rpm-sign gpg && \
+    microdnf clean all
+USER rocky
+WORKDIR /home/rocky
